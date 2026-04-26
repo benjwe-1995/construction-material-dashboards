@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
+const fetch = require("node-fetch");
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
