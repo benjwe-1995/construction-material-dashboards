@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Construction Materials Proxy Price Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root { --bg:#f5f7fb; --card:#ffffff; --ink:#182033; --muted:#657085; --line:#e5e9f2; --accent:#2f6fed; --warn:#8a5a00; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); }
+    header { padding:28px 32px 18px; }
+    h1 { margin:0 0 8px; font-size:28px; }
+    .subtitle { color:var(--muted); max-width:1100px; line-height:1.45; }
+    .banner { margin:0 32px 20px; padding:14px 16px; border:1px solid #f0d58c; background:#fff8e6; border-radius:14px; color:var(--warn); line-height:1.45; }
+    .grid { display:grid; grid-template-columns:repeat(2, minmax(360px, 1fr)); gap:18px; padding:0 32px 24px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:0 8px 24px rgba(16,24,40,.06); padding:16px; min-height:380px; }
+    .card-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:10px; }
+    .title { font-weight:700; font-size:18px; }
+    .proxy { color:var(--muted); font-size:12px; margin-top:3px; }
+    .controls { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+    button { border:1px solid var(--line); background:#fff; color:var(--ink); padding:7px 9px; border-radius:999px; cursor:pointer; font-size:12px; }
+    button.active, button:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
+    canvas { width:100% !important; height:230px !important; }
+    .meta { border-top:1px solid var(--line); margin-top:12px; padding-top:10px; font-size:12px; color:var(--muted); line-height:1.45; }
+    .source { color:var(--ink); font-weight:600; }
+    .status { display:inline-block; margin-top:8px; font-size:12px; color:var(--muted); }
+    .calculator { margin:0 32px 32px; background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:0 8px 24px rgba(16,24,40,.06); padding:18px; }
+    .calc-row { display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin:12px 0 16px; }
+    label { font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
+    input { padding:10px 12px; border:1px solid var(--line); border-radius:10px; min-width:160px; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th, td { padding:10px; border-bottom:1px solid var(--line); text-align:left; }
+    th { color:var(--muted); font-weight:600; }
+    .positive { color:#087443; font-weight:700; }
+    .negative { color:#b42318; font-weight:700; }
+    a { color:var(--accent); text-decoration:none; }
+    @media (max-width:900px){ .grid{grid-template-columns:1fr; padding:0 16px 20px;} header,.banner,.calculator{margin-left:16px;margin-right:16px;} header{padding-left:16px;} }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Construction Materials Proxy Price Dashboard</h1>
+    <div class="subtitle">Tracks monthly price-index proxies for selected construction materials and equipment. These are not Singapore supplier quotes or spot prices; they are public Producer Price Index series, mainly from the U.S. Bureau of Labor Statistics via FRED.</div>
+  </header>
+  <div class="banner"><strong>Interpretation note:</strong> AHUs, chillers, lifts, transformers and gen sets are usually project-specific equipment, so there is rarely a clean market price. Use these series as escalation indicators only. Each chart states its exact proxy and source.</div>
+  <section class="grid" id="charts"></section>
+
+  <section class="calculator">
+    <h2>Custom Period % Change</h2>
+    <div class="subtitle">Pick a start and end month. The table uses the nearest available monthly observation on or after the start date and on or before the end date.</div>
+    <div class="calc-row">
+      <div><label for="startDate">Start month</label><input type="month" id="startDate"></div>
+      <div><label for="endDate">End month</label><input type="month" id="endDate"></div>
+      <button onclick="calculateChanges()">Calculate % change</button>
+    </div>
+    <table>
+      <thead><tr><th>Material / Equipment</th><th>Start Index</th><th>End Index</th><th>% Change</th><th>Source Series</th></tr></thead>
+      <tbody id="changeTable"><tr><td colspan="5">Load data, then choose a period.</td></tr></tbody>
+    </table>
+  </section>
+
+<script>
+const materials = [
+  { key:'concrete', name:'Concrete', series:'PCU327320327320', proxy:'Ready-mix concrete manufacturing PPI', source:'U.S. Bureau of Labor Statistics Producer Price Index, retrieved from FRED', url:'https://fred.stlouisfed.org/series/PCU327320327320', units:'Index Jun 1981=100, monthly, not seasonally adjusted' },
+  { key:'sand', name:'Sand', series:'WPU1321', proxy:'Construction sand, gravel and crushed stone PPI', source:'U.S. Bureau of Labor Statistics Producer Price Index, retrieved from FRED', url:'https://fred.stlouisfed.org/series/WPU1321', units:'Index 1982=100, monthly, not seasonally adjusted' },
+  { key:'ahu', name:'AHU', series:'PCU33343334', proxy:'HVAC and commercial refrigeration equipment PPI', source:'U.S. Bureau of Labor Statistics Producer Price Index, retrieved from FRED', url:'https://fred.stlouisfed.org/series/PCU33343334', units:'Index Dec 2003=100, monthly, not seasonally adjusted' },
+  { key:'chillers', name:'Chillers', series:'WPU1148', proxy:'Air conditioning and refrigeration equipment PPI', source:'U.S. Bureau of Labor Statistics Producer Price Index, retrieved from FRED', url:'https://fred.stlouisfed.org/series/WPU1148', units:'Index 1982=100, monthly, not seasonally adjusted' },
+  { key:'pvc', name:'PVC Pipes', series:'PCU3261223261221', proxy:'Plastics pipe manufacturing PPI', source:'U.S. Bureau of Labor Statistics Producer Price Index, retrieved from FRED', url:'https://fred.stlouisfed.org/series/PCU3261223261221', units:'Index Dec 1982=100, monthly, not seasonally adjusted' },
+  { key:'transformers', name:'Transformers', series:'WPU117409', proxy:'Power and distribution transformers, except parts PPI', source:'U.S. Bureau of Labor Statistics Producer Price Index, retrieved from FRED', url:'https://fred.stlouisfed.org/series/WPU117409', units:'Index Dec 1999=100, monthly, not seasonally adjusted' },
+  { key:'lifts', name:'Lifts', series:'PCU3339213339211', proxy:'Elevators and moving stairways PPI', source:'U.S. Bureau of Labor Statistics Producer Price Index, retrieved from FRED', url:'https://fred.stlouisfed.org/series/PCU3339213339211', units:'Index Jun 1981=100, monthly, not seasonally adjusted' },
+  { key:'gensets', name:'Gen Sets', series:'WPU1173', proxy:'Motors, generators and motor generator sets PPI', source:'U.S. Bureau of Labor Statistics Producer Price Index, retrieved from FRED', url:'https://fred.stlouisfed.org/series/WPU1173', units:'Index 1982=100, monthly, not seasonally adjusted' }
+];
+const periods = { '1Y':12, '3Y':36, '5Y':60, '10Y':120, 'Max':9999 };
+const allData = {};
+const charts = {};
+
+function formatMonth(dateStr) { const d = new Date(dateStr); return d.toLocaleDateString(undefined, { year:'numeric', month:'short' }); }
+function filterData(data, period) { const n = periods[period]; return n === 9999 ? data : data.slice(-n); }
+
+function createCard(m) {
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.innerHTML = `
+    <div class="card-head">
+      <div><div class="title">${m.name}</div><div class="proxy">Proxy: ${m.proxy}</div></div>
+      <div class="controls">${Object.keys(periods).map(p => `<button id="${m.key}-${p}" onclick="setPeriod('${m.key}','${p}')">${p}</button>`).join('')}</div>
+    </div>
+    <canvas id="chart-${m.key}"></canvas>
+    <div class="meta"><span class="source">Source:</span> ${m.source}<br><span class="source">Series:</span> <a href="${m.url}" target="_blank">${m.series}</a> — ${m.units}<br><span class="status" id="status-${m.key}">Loading...</span></div>`;
+  document.getElementById('charts').appendChild(div);
+}
+
+async function fetchSeries(m) {
+  const r = await fetch(`/api/fred/${m.series}`);
+  if (!r.ok) throw new Error(await r.text());
+  const payload = await r.json();
+  return payload.data;
+}
+
+function drawChart(m, period='5Y') {
+  const data = filterData(allData[m.key], period);
+  const ctx = document.getElementById(`chart-${m.key}`);
+  document.querySelectorAll(`[id^="${m.key}-"]`).forEach(b => b.classList.remove('active'));
+  document.getElementById(`${m.key}-${period}`).classList.add('active');
+  if (charts[m.key]) charts[m.key].destroy();
+  charts[m.key] = new Chart(ctx, {
+    type:'line',
+    data:{ labels:data.map(d=>d.date), datasets:[{ label:m.name, data:data.map(d=>d.value), tension:.25, pointRadius:0, pointHoverRadius:5, borderWidth:2 }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ title:(items)=>formatMonth(items[0].label), label:(ctx)=>`Index: ${ctx.parsed.y.toFixed(3)}` } } },
+      scales:{ x:{ ticks:{ maxTicksLimit:6, callback:function(value){ return formatMonth(this.getLabelForValue(value)); } }, grid:{display:false} }, y:{ title:{display:true,text:'Price index'}, ticks:{ callback:v=>Number(v).toFixed(0) } } }
+    }
+  });
+}
+function setPeriod(key, period) { const m = materials.find(x=>x.key===key); drawChart(m, period); }
+
+function nearestStart(data, ym) { return data.find(d => d.date.slice(0,7) >= ym); }
+function nearestEnd(data, ym) { return [...data].reverse().find(d => d.date.slice(0,7) <= ym); }
+function calculateChanges() {
+  const start = document.getElementById('startDate').value;
+  const end = document.getElementById('endDate').value;
+  const tbody = document.getElementById('changeTable');
+  if (!start || !end) { tbody.innerHTML = '<tr><td colspan="5">Please select both start and end month.</td></tr>'; return; }
+  tbody.innerHTML = materials.map(m => {
+    const data = allData[m.key] || [];
+    const s = nearestStart(data, start), e = nearestEnd(data, end);
+    if (!s || !e) return `<tr><td>${m.name}</td><td colspan="3">No data for selected period</td><td>${m.series}</td></tr>`;
+    const pct = ((e.value - s.value) / s.value) * 100;
+    const cls = pct >= 0 ? 'positive' : 'negative';
+    return `<tr><td>${m.name}</td><td>${s.value.toFixed(3)}<br><small>${s.date}</small></td><td>${e.value.toFixed(3)}<br><small>${e.date}</small></td><td class="${cls}">${pct.toFixed(2)}%</td><td><a href="${m.url}" target="_blank">${m.series}</a></td></tr>`;
+  }).join('');
+}
+
+async function init() {
+  materials.forEach(createCard);
+  for (const m of materials) {
+    try {
+      const data = await fetchSeries(m);
+      allData[m.key] = data;
+      document.getElementById(`status-${m.key}`).textContent = `Loaded ${data.length} monthly observations. Latest: ${data[data.length-1].date} = ${data[data.length-1].value.toFixed(3)}.`;
+      drawChart(m, '5Y');
+    } catch (err) {
+      document.getElementById(`status-${m.key}`).textContent = `Failed to load live data: ${err.message}`;
+    }
+  }
+  const all = Object.values(allData)[0] || [];
+  if (all.length) {
+    document.getElementById('startDate').value = all[Math.max(0, all.length-61)].date.slice(0,7);
+    document.getElementById('endDate').value = all[all.length-1].date.slice(0,7);
+    calculateChanges();
+  }
+}
+init();
+</script>
+</body>
+</html>
