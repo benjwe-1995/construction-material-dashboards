@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Singapore Construction Material Price Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--bg:#0f172a;--panel:#111827;--panel2:#172033;--text:#e5e7eb;--muted:#94a3b8;--border:rgba(148,163,184,.18);--accent:#38bdf8;--good:#34d399;--bad:#fb7185;--warn:#fbbf24;--shadow:0 18px 45px rgba(0,0,0,.35)}
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(circle at top left,rgba(56,189,248,.18),transparent 35%),radial-gradient(circle at bottom right,rgba(52,211,153,.1),transparent 35%),var(--bg);color:var(--text);padding:28px}
+    header{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:22px} h1{margin:0 0 8px;font-size:clamp(1.7rem,3vw,2.7rem);letter-spacing:-.04em}.subtitle{margin:0;color:var(--muted);max-width:1050px;line-height:1.5;font-size:.98rem}.source-pill{white-space:nowrap;border:1px solid var(--border);background:rgba(15,23,42,.72);padding:10px 14px;border-radius:999px;color:var(--muted);font-size:.85rem;box-shadow:var(--shadow)}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}.small-btn{border:1px solid var(--border);background:rgba(15,23,42,.75);color:var(--text);border-radius:14px;padding:10px 13px;cursor:pointer}.small-btn:hover{border-color:rgba(56,189,248,.75)}
+    .section-title{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin:18px 0 12px}.section-title h2{margin:0;font-size:1.25rem;letter-spacing:-.03em}.section-title p{margin:0;color:var(--muted);font-size:.85rem;line-height:1.45;max-width:850px}.dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.card,.change-card{background:linear-gradient(180deg,rgba(23,32,51,.96),rgba(17,24,39,.96));border:1px solid var(--border);border-radius:24px;box-shadow:var(--shadow);overflow:hidden}.card-header{padding:18px 18px 6px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.commodity-title{margin:0;font-size:1.1rem;letter-spacing:-.02em}.symbol{color:var(--muted);font-size:.78rem;margin-top:4px}.metric{text-align:right;font-variant-numeric:tabular-nums}.metric .price{font-size:1.05rem;font-weight:750}.metric .change{font-size:.82rem;color:var(--muted);margin-top:4px}.controls{padding:8px 18px 4px;display:flex;flex-wrap:wrap;gap:8px}button.period-btn{border:1px solid var(--border);background:rgba(15,23,42,.7);color:var(--muted);border-radius:999px;padding:7px 10px;cursor:pointer;font-size:.8rem;transition:all .18s ease}button.period-btn:hover,button.period-btn.active{color:white;border-color:rgba(56,189,248,.75);background:rgba(56,189,248,.18);transform:translateY(-1px)}.chart-wrap{height:285px;padding:4px 12px 18px}.status{padding:0 18px 16px;color:var(--muted);font-size:.78rem;line-height:1.45}.status .live{color:var(--good)}.status .bad{color:var(--bad)}.status a{color:#bae6fd}.badge{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:3px 8px;margin-left:6px;color:var(--muted);font-size:.72rem}
+    .change-card{margin-top:18px;padding:20px}.change-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px}.change-header h2{margin:0 0 6px;font-size:1.25rem;letter-spacing:-.03em}.change-header p{margin:0;color:var(--muted);font-size:.92rem;line-height:1.45}.date-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:16px}label{display:grid;gap:6px;color:var(--muted);font-size:.78rem}input[type=date],select{border:1px solid var(--border);border-radius:14px;background:rgba(15,23,42,.85);color:var(--text);padding:10px 12px;font:inherit;color-scheme:dark}.calculate-btn{border:0;border-radius:14px;background:linear-gradient(135deg,#38bdf8,#22c55e);color:#03131f;padding:11px 15px;font-weight:800;cursor:pointer;box-shadow:0 10px 22px rgba(34,197,94,.2)}.change-results{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.change-box{border:1px solid var(--border);border-radius:18px;background:rgba(15,23,42,.68);padding:14px;min-height:116px}.change-box .name{color:var(--muted);font-size:.82rem;margin-bottom:8px}.change-box .pct{font-size:1.55rem;font-weight:850;letter-spacing:-.04em;margin-bottom:8px;font-variant-numeric:tabular-nums}.positive{color:var(--good)}.negative{color:var(--bad)}.change-box .details{color:var(--muted);font-size:.76rem;line-height:1.35}.footnote{margin-top:16px;color:var(--muted);font-size:.78rem;line-height:1.45}.footnote a{color:#bae6fd}code{color:#bae6fd}@media(max-width:1000px){.dashboard-grid,.change-results{grid-template-columns:1fr}header,.change-header,.section-title{flex-direction:column;align-items:flex-start}.source-pill{white-space:normal}body{padding:18px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Singapore Construction Material Price Dashboard</h1>
+      <p class="subtitle">Interactive dashboard using two public data.gov.sg datasets: BCA construction material market prices and SingStat import price indices by commodity group. The server fetches and transforms the data; the browser only renders the charts.</p>
+    </div>
+    <div class="source-pill">Source: data.gov.sg datastore API</div>
+  </header>
+
+  <div class="toolbar">
+    <button class="small-btn" onclick="reloadData()">Retry data load</button>
+    <button class="small-btn" onclick="showDiagnostics()">Show source diagnostics</button>
+    <button class="small-btn" onclick="window.open('/api/health','_blank')">Open health check</button>
+    <button class="small-btn" onclick="window.open('/api/series','_blank')">Open series API</button>
+  </div>
+
+  <main>
+    <div class="section-title"><h2>Dataset 1 — Construction Material Market Prices</h2><p>Raw monthly market-price series for Cement, Steel Rebar, Granite Aggregate, Sand, and Ready-mixed Concrete.</p></div>
+    <section class="dashboard-grid" id="constructionGrid"></section>
+
+    <div class="section-title"><h2>Dataset 2 — Import Price Indices</h2><p>Monthly import price index series for Crude Oil, Copper, Aluminium, and Steel. Base year: 2023 = 100.</p></div>
+    <section class="dashboard-grid" id="importGrid"></section>
+
+    <section class="change-card">
+      <div class="change-header"><div><h2>Custom Period % Change</h2><p>Select a start and end date. The calculator uses the closest available month in each loaded series.</p></div></div>
+      <div class="date-controls">
+        <label>Series group<select id="changeGroup" onchange="calculateChanges()"><option value="all">All series</option><option value="construction">Construction materials only</option><option value="import">Import indices only</option></select></label>
+        <label>Start date<input id="startDate" type="date"></label>
+        <label>End date<input id="endDate" type="date"></label>
+        <button class="calculate-btn" onclick="calculateChanges()">Calculate % change</button>
+      </div>
+      <div class="change-results" id="changeResults"></div>
+      <div class="footnote" id="dataFootnote">Loading data.gov.sg datasets...</div>
+    </section>
+  </main>
+
+<script>
+const periods=[{label:'3M',months:3},{label:'6M',months:6},{label:'YTD',ytd:true},{label:'1Y',months:12},{label:'3Y',months:36},{label:'5Y',months:60},{label:'10Y',months:120},{label:'Max',months:9999}];
+const state={series:[],data:{},charts:{},activePeriod:{},diagnostics:[]};
+
+function fmtPrice(v){return Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}
+function pct(start,end){return((end-start)/start)*100}
+function groupLabel(group){return group==='construction'?'Price':'Index'}
+
+async function loadSeries(){
+  const res=await fetch('/api/series',{cache:'no-store'});
+  const payload=await res.json().catch(()=>({error:'Response was not valid JSON'}));
+  if(!res.ok) throw new Error(payload.error || `HTTP ${res.status}`);
+  return payload;
+}
+
+function buildCards(){
+  for(const group of ['construction','import']){
+    const grid=document.getElementById(group==='construction'?'constructionGrid':'importGrid');
+    grid.innerHTML=state.series.filter(c=>c.group===group).map(c=>`<article class="card" id="card-${c.key}"><div class="card-header"><div><h3 class="commodity-title">${c.name}<span class="badge">${groupLabel(c.group)}</span></h3><div class="symbol">${c.unit}</div></div><div class="metric"><div class="price" id="price-${c.key}">—</div><div class="change" id="change-${c.key}">—</div></div></div><div class="controls">${periods.map(p=>`<button class="period-btn ${p.label==='5Y'?'active':''}" onclick="setPeriod('${c.key}','${p.label}')">${p.label}</button>`).join('')}</div><div class="chart-wrap"><canvas id="chart-${c.key}"></canvas></div><div class="status" id="status-${c.key}">Loading...</div></article>`).join('');
+  }
+}
+
+function slicePeriod(data,label){const p=periods.find(x=>x.label===label)||periods.find(x=>x.label==='5Y');if(!data?.length)return[];if(p.months===9999)return data;const latest=new Date(data[data.length-1].date);let cutoff=new Date(latest);if(p.ytd)cutoff=new Date(latest.getFullYear(),0,1);else cutoff.setMonth(cutoff.getMonth()-p.months);return data.filter(x=>new Date(x.date)>=cutoff)}
+function updateMetric(key,sliced){const priceEl=document.getElementById(`price-${key}`),changeEl=document.getElementById(`change-${key}`);if(!sliced.length){priceEl.textContent='—';changeEl.textContent='No data';return}const latest=sliced[sliced.length-1],first=sliced[0],p=pct(first.price,latest.price);priceEl.textContent=fmtPrice(latest.price);changeEl.textContent=`${p>=0?'+':''}${p.toFixed(2)}% over selected period`;changeEl.className=`change ${p>=0?'positive':'negative'}`}
+function setPeriod(key,label){state.activePeriod[key]=label;document.querySelectorAll(`#card-${key} .period-btn`).forEach(b=>b.classList.toggle('active',b.textContent===label));renderChart(key)}
+function renderChart(key){const c=state.series.find(x=>x.key===key),sliced=slicePeriod(state.data[key],state.activePeriod[key]||'5Y');updateMetric(key,sliced);const ctx=document.getElementById(`chart-${key}`);if(state.charts[key])state.charts[key].destroy();state.charts[key]=new Chart(ctx,{type:'line',data:{labels:sliced.map(x=>x.date),datasets:[{label:c.name,data:sliced.map(x=>x.price),borderColor:c.color,backgroundColor:c.color+'22',pointRadius:2,pointHoverRadius:5,borderWidth:2.5,fill:true,tension:.28}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>`Month: ${items[0].label.slice(0,7)}`,label:item=>`Value: ${fmtPrice(item.raw)} ${c.unit}`}}},scales:{x:{ticks:{color:'#94a3b8',maxTicksLimit:6,callback:function(v){return this.getLabelForValue(v).slice(0,7)}},grid:{color:'rgba(148,163,184,.08)'}},y:{ticks:{color:'#94a3b8',callback:v=>Number(v).toLocaleString()},grid:{color:'rgba(148,163,184,.08)'}}}}})}
+
+function nearestAfter(data,date){return data.find(x=>x.date>=date)||data[data.length-1]}
+function nearestBefore(data,date){for(let i=data.length-1;i>=0;i--)if(data[i].date<=date)return data[i];return data[0]}
+function calculateChanges(){const start=document.getElementById('startDate').value,end=document.getElementById('endDate').value,group=document.getElementById('changeGroup').value,res=document.getElementById('changeResults');if(!start||!end||start>end){res.innerHTML='<div class="change-box"><div class="name">Input needed</div><div class="details">Please choose a valid start and end date.</div></div>';return}const configs=state.series.filter(c=>group==='all'||c.group===group);res.innerHTML=configs.map(c=>{const data=state.data[c.key]||[];if(!data.length)return `<div class="change-box"><div class="name">${c.name}</div><div class="details">No data loaded.</div></div>`;const a=nearestAfter(data,start),b=nearestBefore(data,end);const p=pct(a.price,b.price),cls=p>=0?'positive':'negative';return `<div class="change-box"><div class="name">${c.name}</div><div class="pct ${cls}">${p>=0?'+':''}${p.toFixed(2)}%</div><div class="details">${a.date.slice(0,7)}: ${fmtPrice(a.price)}<br>${b.date.slice(0,7)}: ${fmtPrice(b.price)}<br>${c.unit}</div></div>`}).join('')}
+
+function setDefaultDates(){const dates=Object.values(state.data).flatMap(rows=>rows.map(x=>x.date)).sort();if(!dates.length)return;const end=dates[dates.length-1];const startDate=new Date(end);startDate.setFullYear(startDate.getFullYear()-5);document.getElementById('startDate').value=startDate.toISOString().slice(0,10);document.getElementById('endDate').value=end;}
+
+async function reloadData(){
+  document.getElementById('dataFootnote').textContent='Reloading data.gov.sg datasets...';
+  try{
+    const payload=await loadSeries();
+    state.series=payload.series || [];
+    state.diagnostics=payload.diagnostics || [];
+    state.data={};
+    buildCards();
+    for(const s of state.series){
+      state.data[s.key]=s.data || [];
+      state.activePeriod[s.key]=state.activePeriod[s.key]||'5Y';
+      document.getElementById(`status-${s.key}`).innerHTML=`<span class="live">${s.sourceAgency}</span><br>Matched row: ${s.originalRow}<br>${s.observations.toLocaleString()} observations · ${s.startDate.slice(0,7)} to ${s.endDate.slice(0,7)}<br><a target="_blank" href="${s.sourceUrl}">Open source dataset</a>`;
+      renderChart(s.key);
+    }
+    setDefaultDates();
+    calculateChanges();
+    const counts=payload.recordCounts || {};
+    document.getElementById('dataFootnote').innerHTML=`Loaded ${state.series.length} series. Raw row counts — Dataset 1: ${Object.values(counts)[0] ?? '—'}, Dataset 2: ${Object.values(counts)[1] ?? '—'}. Use the health/series buttons above for local debugging.`;
+  }catch(err){
+    document.getElementById('dataFootnote').innerHTML=`<span style="color:#fb7185">Failed to load data:</span> ${err.message||String(err)}. Open <code>/api/health</code> and <code>/api/series</code> to isolate whether the server or frontend is failing.`;
+    for(const gridId of ['constructionGrid','importGrid']) document.getElementById(gridId).innerHTML='';
+  }
+}
+
+function showDiagnostics(){
+  if(!state.diagnostics.length){alert('No diagnostics yet. Try loading /api/series directly.');return;}
+  alert(state.diagnostics.map(d=>`${d.name}\nMatched row: ${d.matchedRow}\nObservations: ${d.observations}\nFirst: ${d.first?.date} = ${d.first?.price}\nLatest: ${d.latest?.date} = ${d.latest?.price}\nSample columns: ${(d.sampleColumns||[]).join(', ')}`).join('\n\n'));
+}
+
+reloadData();
+</script>
+</body>
+</html>
